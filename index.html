@@ -3,303 +3,350 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Real-Time SOC Dashboard</title>
+  <title>ATAT | Threat Monitor</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+
     :root {
-      color-scheme: dark;
-      background: #0b0f19;
-      color: #c7d2ff;
-      font-family: 'Share Tech Mono', monospace;
+      --bg-body: #f4f7fa;
+      --bg-card: #ffffff;
+      --bg-item: #ffffff;
+      --text-main: #1a1d23;
+      --text-muted: #64748b;
+      --accent: #2563eb;
+      --border: #e2e8f0;
+      --safe: #10b981;
+      --threat: #ef4444;
+      --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     }
+
     * {
       box-sizing: border-box;
-    }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: radial-gradient(circle at top, rgba(25,255,152,0.07), transparent 30%),
-                  radial-gradient(circle at bottom right, rgba(255,58,101,0.08), transparent 25%),
-                  #0b0f19;
-      color: #d0d6ff;
-    }
-    .layout {
-      display: grid;
-      grid-template-columns: 2.2fr 1fr;
-      gap: 20px;
-      padding: 24px;
-      min-height: 100vh;
-    }
-    .card {
-      background: rgba(10, 13, 25, 0.92);
-      border: 1px solid rgba(72, 255, 144, 0.12);
-      border-radius: 18px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.25);
-      padding: 24px;
-      overflow: hidden;
-    }
-    .card h1,
-    .card h2,
-    .card h3 {
-      margin: 0 0 14px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #9bb0ff;
-    }
-    .panel-title {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 0.95rem;
-      margin-bottom: 16px;
-    }
-    .panel-title::before {
-      content: '';
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #37ff9f, #29c3ff);
-      box-shadow: 0 0 18px rgba(56, 255, 157, 0.45);
-    }
-    .stream {
-      background: rgba(3, 8, 19, 0.9);
-      border: 1px solid rgba(34, 255, 152, 0.14);
-      padding: 18px;
-      border-radius: 16px;
-      min-height: 520px;
-      display: flex;
-      flex-direction: column;
-    }
-    .log-list {
-      list-style: none;
       margin: 0;
       padding: 0;
-      flex: 1;
-      overflow-y: auto;
+    }
+
+    body {
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.5;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .dashboard {
+      max-width: 1200px;
+      margin: 0 auto;
       display: grid;
-      gap: 10px;
+      grid-template-columns: 1fr 360px;
+      gap: 2rem;
     }
-    .log-item {
-      padding: 12px 14px;
-      border-radius: 12px;
-      background: rgba(22, 28, 49, 0.92);
-      border: 1px solid rgba(72, 255, 144, 0.08);
-      box-shadow: inset 0 0 1px rgba(255,255,255,0.08);
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 12px;
+
+    header {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
     }
-    .log-item span {
-      display: block;
-      font-size: 0.92rem;
-      line-height: 1.35;
-    }
-    .text-muted {
-      color: #7d8db0;
-    }
-    .status {
-      font-size: 0.925rem;
+
+    .brand {
+      font-size: 1.5rem;
       font-weight: 700;
-      padding: 8px 12px;
-      border-radius: 999px;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .brand span {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+    }
+
+    .card-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.05em;
+      margin-bottom: 1.5rem;
     }
-    .status.safe {
-      color: #00ff88;
-      background: rgba(12, 45, 18, 0.7);
-      border: 1px solid rgba(0,255,136,0.18);
+
+    /* Traffic List */
+    .traffic-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      list-style: none;
     }
-    .status.threat {
-      color: #ff4179;
-      background: rgba(45, 5, 15, 0.72);
-      border: 1px solid rgba(255,65,121,0.22);
-    }
-    .system-card {
+
+    .traffic-item {
       display: grid;
-      gap: 18px;
+      grid-template-columns: 100px 1fr 100px;
+      align-items: center;
+      padding: 1rem;
+      background: var(--bg-item);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      transition: transform 0.2s;
     }
-    .alert-box {
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 22px;
-      padding: 24px;
-      background: rgba(11,15,25,0.96);
-      position: relative;
-      overflow: hidden;
+
+    .traffic-item:hover {
+      border-color: var(--accent);
     }
-    .alert-title {
-      font-size: 1rem;
-      margin-bottom: 10px;
-      color: #8ba9ff;
-      letter-spacing: 0.12em;
+
+    .time {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: var(--accent);
+      font-size: 0.9rem;
     }
-    .alert-status {
-      font-size: 3rem;
-      font-weight: 800;
-      margin: 0;
-      letter-spacing: 0.08em;
+
+    .meta {
+      font-size: 0.9rem;
+    }
+
+    .meta strong {
+      color: var(--text-main);
+    }
+
+    .meta span {
+      color: var(--text-muted);
+      margin-left: 0.5rem;
+    }
+
+    .status-tag {
+      justify-self: end;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
       text-transform: uppercase;
     }
-    .alert-status.secure {
-      color: #36ff88;
-      text-shadow: 0 0 18px rgba(58,255,140,0.35);
+
+    .tag-safe {
+      background: #dcfce7;
+      color: #166534;
     }
-    .alert-status.danger {
-      color: #ff3a5d;
-      text-shadow: 0 0 18px rgba(255,58,101,0.35);
-      animation: pulse 1s ease-in-out infinite;
+
+    .tag-threat {
+      background: #fee2e2;
+      color: #991b1b;
     }
-    .alert-detail {
-      color: #dbe1ff;
-      margin-top: 16px;
-      line-height: 1.6;
+
+    /* Sidebar */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
     }
-    .metrics {
-      display: grid;
-      gap: 14px;
+
+    .alert-card {
+      text-align: center;
+      padding: 2rem 1.5rem;
     }
-    .metric-card {
-      padding: 18px;
-      border-radius: 18px;
-      background: rgba(19, 24, 42, 0.86);
-      border: 1px solid rgba(72, 255, 144, 0.08);
-      display: grid;
-      gap: 8px;
+
+    .status-indicator {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+      font-size: 1.5rem;
     }
-    .metric-card strong {
-      font-size: 0.88rem;
-      color: #9db7ff;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
+
+    .indicator-safe {
+      background: var(--safe);
+      color: white;
     }
-    .metric-card .value {
-      font-size: 1.8rem;
-      color: #fff;
-      line-height: 1.1;
+
+    .indicator-threat {
+      background: var(--threat);
+      color: white;
+      animation: pulse 2s infinite;
     }
+
     @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.02); }
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+      70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
     }
-    .footer {
-      margin-top: 12px;
-      font-size: 0.8rem;
-      color: #6e7fac;
+
+    .alert-text {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .alert-sub {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    .metric-group {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .metric {
+      padding: 1rem;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .m-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .m-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .m-value.blue {
+      color: var(--accent);
     }
   </style>
 </head>
 <body>
-  <div class="layout">
-    <section class="card">
-      <div class="panel-title"><h2>Live Network Traffic</h2></div>
-      <div class="stream">
-        <ul id="trafficLog" class="log-list"></ul>
-      </div>
-      <div class="footer">Real-time SOC stream updating every second.</div>
-    </section>
+  <div class="dashboard">
+    <header>
+      <div class="brand">ATAT <span>| SOC Monitor</span></div>
+      <div style="font-size: 0.8rem; font-weight: 600; color: var(--safe)">● LIVE STREAMING</div>
+    </header>
 
-    <aside class="card system-card">
-      <div class="panel-title"><h2>System Status</h2></div>
-      <div class="alert-box" id="statusPanel">
-        <div class="alert-title">Threat Monitoring</div>
-        <div id="alertStatus" class="alert-status secure">SECURE</div>
-        <div id="alertDetail" class="alert-detail">All systems stable. No active threats detected.</div>
+    <main>
+      <div class="card">
+        <h2 class="card-title">Live Network Traffic (Last 6 Packets)</h2>
+        <ul id="trafficLog" class="traffic-list"></ul>
+      </div>
+    </main>
+
+    <aside class="sidebar">
+      <div class="card alert-card">
+        <div id="indicator" class="status-indicator indicator-safe">✓</div>
+        <div id="statusText" class="alert-text" style="color: var(--safe)">SYSTEM SECURE</div>
+        <div id="statusDesc" class="alert-sub">No threats detected. All patterns are normal.</div>
       </div>
 
-      <div class="metrics">
-        <div class="metric-card">
-          <strong>Packets scanned</strong>
-          <div id="packetCount" class="value">0</div>
-        </div>
-        <div class="metric-card">
-          <strong>Last prediction</strong>
-          <div id="lastPrediction" class="value">N/A</div>
-        </div>
-        <div class="metric-card">
-          <strong>Confidence</strong>
-          <div id="lastConfidence" class="value">0.00</div>
+      <div class="card">
+        <h2 class="card-title">System Metrics</h2>
+        <div class="metric-group">
+          <div class="metric">
+            <div class="m-label">TOTAL PACKETS SCANNED</div>
+            <div id="count" class="m-value blue">0</div>
+            <div class="alert-sub" style="font-size: 0.7rem; margin-top: 4px;">Total network packets analyzed since startup.</div>
+          </div>
+          <div class="metric">
+            <div class="m-label">THREAT CLASSIFICATION</div>
+            <div id="lastPred" class="m-value" style="font-size: 1rem; color: var(--text-main);">N/A</div>
+            <div class="alert-sub" style="font-size: 0.7rem; margin-top: 4px;">Specific type of traffic identified by AI.</div>
+          </div>
+          <div class="metric">
+            <div class="m-label">AI CONFIDENCE SCORE</div>
+            <div id="lastConf" class="m-value">0.0000</div>
+            <div class="alert-sub" style="font-size: 0.7rem; margin-top: 4px;">Certainty level of the AI's prediction (0-1).</div>
+          </div>
         </div>
       </div>
     </aside>
   </div>
 
   <script>
-    const trafficLog = document.getElementById('trafficLog');
-    const alertStatus = document.getElementById('alertStatus');
-    const alertDetail = document.getElementById('alertDetail');
-    const packetCount = document.getElementById('packetCount');
-    const lastPrediction = document.getElementById('lastPrediction');
-    const lastConfidence = document.getElementById('lastConfidence');
+    const log = document.getElementById('trafficLog');
+    const indicator = document.getElementById('indicator');
+    const statusText = document.getElementById('statusText');
+    const statusDesc = document.getElementById('statusDesc');
+    const countEl = document.getElementById('count');
+    const predEl = document.getElementById('lastPred');
+    const confEl = document.getElementById('lastConf');
 
+    let total = 0;
     let packetId = 0;
-    const maxEntries = 50;
-    let totalPackets = 0;
+    const LIMIT = 6;
 
-    function createLogEntry(packet) {
-      const entry = document.createElement('li');
-      entry.className = 'log-item';
-      entry.innerHTML = `
-        <span><strong>${packet.timestamp}</strong><br><span class="text-muted">Packet ID: ${packet.id} | Bytes: ${packet.bytes}</span></span>
-        <span class="status ${packet.status === 'BENIGN' ? 'safe' : 'threat'}">${packet.status}</span>
+    function addLog(data, bytes) {
+      packetId++;
+      total++;
+      
+      const li = document.createElement('li');
+      li.className = 'traffic-item';
+      
+      const isSafe = data.prediction === 'BENIGN';
+      const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
+      
+      li.innerHTML = `
+        <div class="time">${time}</div>
+        <div class="meta">
+          <strong>#${packetId.toString().padStart(4, '0')}</strong>
+          <span>Size: ${bytes} bytes</span>
+        </div>
+        <div class="status-tag ${isSafe ? 'tag-safe' : 'tag-threat'}">${data.prediction}</div>
       `;
-      return entry;
-    }
 
-    function updateSystemState(prediction, confidence) {
-      lastPrediction.textContent = prediction;
-      lastConfidence.textContent = confidence.toFixed(4);
-      if (prediction === 'BENIGN') {
-        alertStatus.textContent = 'SECURE';
-        alertStatus.className = 'alert-status secure';
-        alertDetail.textContent = 'All systems stable. No active threats detected.';
+      log.prepend(li);
+      
+      // STRICT LIMIT ENFORCEMENT
+      while (log.children.length > LIMIT) {
+        log.removeChild(log.lastChild);
+      }
+
+      // Update UI
+      countEl.textContent = total.toLocaleString();
+      predEl.textContent = data.prediction;
+      confEl.textContent = data.confidence.toFixed(4);
+
+      if (isSafe) {
+        indicator.className = 'status-indicator indicator-safe';
+        indicator.textContent = '✓';
+        statusText.textContent = 'SYSTEM SECURE';
+        statusText.style.color = 'var(--safe)';
+        statusDesc.textContent = 'No threats detected. All patterns are normal.';
       } else {
-        alertStatus.textContent = 'THREAT DETECTED';
-        alertStatus.className = 'alert-status danger';
-        alertDetail.textContent = `Threat name: ${prediction}. Immediate response required.`;
+        indicator.className = 'status-indicator indicator-threat';
+        indicator.textContent = '!';
+        statusText.textContent = 'THREAT DETECTED';
+        statusText.style.color = 'var(--threat)';
+        statusDesc.textContent = `Anomaly detected: [${data.prediction}]. Immediate review required.`;
       }
     }
 
-    async function fetchPrediction() {
+    async function tick() {
       try {
-        const simRes = await fetch('http://localhost:8000/simulate_traffic');
-        const simData = await simRes.json();
-        const predictRes = await fetch('http://localhost:8000/predict', {
+        const s = await fetch('http://localhost:8000/simulate_traffic');
+        const sd = await s.json();
+        const p = await fetch('http://localhost:8000/predict', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ features: simData.features }),
+          body: JSON.stringify({ features: sd.features }),
         });
-
-        if (!predictRes.ok) {
-          console.error('Prediction error', await predictRes.text());
-          return;
+        if (p.ok) {
+          const res = await p.json();
+          addLog(res, Math.floor(Math.random() * 1400) + 60);
         }
-
-        const result = await predictRes.json();
-        packetId += 1;
-        totalPackets += 1;
-        const bytes = Math.round(Math.random() * 65000 + 100);
-        const packetItem = {
-          id: packetId,
-          timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
-          bytes,
-          status: result.prediction === 'BENIGN' ? 'BENIGN' : 'ATTACK',
-        };
-
-        const logEntry = createLogEntry(packetItem);
-        trafficLog.prepend(logEntry);
-        while (trafficLog.children.length > maxEntries) {
-          trafficLog.removeChild(trafficLog.lastChild);
-        }
-
-        packetCount.textContent = totalPackets.toString();
-        updateSystemState(result.prediction, result.confidence);
-      } catch (error) {
-        console.error('Fetch error', error);
-      }
+      } catch (e) { console.error(e); }
     }
 
-    setInterval(fetchPrediction, 1000);
-    fetchPrediction();
+    setInterval(tick, 1000);
+    tick();
   </script>
 </body>
 </html>
