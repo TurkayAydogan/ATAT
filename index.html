@@ -287,11 +287,12 @@
       packetId++;
       total++;
       
+      
+      const isSafe = data.prediction.includes('BENIGN');
+      const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
+      
       const li = document.createElement('li');
       li.className = 'traffic-item';
-      
-      const isSafe = data.prediction === 'BENIGN';
-      const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
       
       li.innerHTML = `
         <div class="time">${time}</div>
@@ -304,12 +305,12 @@
 
       log.prepend(li);
       
-      // STRICT LIMIT ENFORCEMENT
+      
       while (log.children.length > LIMIT) {
         log.removeChild(log.lastChild);
       }
 
-      // Update UI
+      
       countEl.textContent = total.toLocaleString();
       predEl.textContent = data.prediction;
       confEl.textContent = data.confidence.toFixed(4);
