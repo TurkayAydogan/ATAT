@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Real-Time SOC Dashboard</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+    :root {
+      color-scheme: dark;
+      background: #0b0f19;
+      color: #c7d2ff;
+      font-family: 'Share Tech Mono', monospace;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, rgba(25,255,152,0.07), transparent 30%),
+                  radial-gradient(circle at bottom right, rgba(255,58,101,0.08), transparent 25%),
+                  #0b0f19;
+      color: #d0d6ff;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 2.2fr 1fr;
+      gap: 20px;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    .card {
+      background: rgba(10, 13, 25, 0.92);
+      border: 1px solid rgba(72, 255, 144, 0.12);
+      border-radius: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      padding: 24px;
+      overflow: hidden;
+    }
+    .card h1,
+    .card h2,
+    .card h3 {
+      margin: 0 0 14px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #9bb0ff;
+    }
+    .panel-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.95rem;
+      margin-bottom: 16px;
+    }
+    .panel-title::before {
+      content: '';
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #37ff9f, #29c3ff);
+      box-shadow: 0 0 18px rgba(56, 255, 157, 0.45);
+    }
+    .stream {
+      background: rgba(3, 8, 19, 0.9);
+      border: 1px solid rgba(34, 255, 152, 0.14);
+      padding: 18px;
+      border-radius: 16px;
+      min-height: 520px;
+      display: flex;
+      flex-direction: column;
+    }
+    .log-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      flex: 1;
+      overflow-y: auto;
+      display: grid;
+      gap: 10px;
+    }
+    .log-item {
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(22, 28, 49, 0.92);
+      border: 1px solid rgba(72, 255, 144, 0.08);
+      box-shadow: inset 0 0 1px rgba(255,255,255,0.08);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+    }
+    .log-item span {
+      display: block;
+      font-size: 0.92rem;
+      line-height: 1.35;
+    }
+    .text-muted {
+      color: #7d8db0;
+    }
+    .status {
+      font-size: 0.925rem;
+      font-weight: 700;
+      padding: 8px 12px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    .status.safe {
+      color: #00ff88;
+      background: rgba(12, 45, 18, 0.7);
+      border: 1px solid rgba(0,255,136,0.18);
+    }
+    .status.threat {
+      color: #ff4179;
+      background: rgba(45, 5, 15, 0.72);
+      border: 1px solid rgba(255,65,121,0.22);
+    }
+    .system-card {
+      display: grid;
+      gap: 18px;
+    }
+    .alert-box {
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 22px;
+      padding: 24px;
+      background: rgba(11,15,25,0.96);
+      position: relative;
+      overflow: hidden;
+    }
+    .alert-title {
+      font-size: 1rem;
+      margin-bottom: 10px;
+      color: #8ba9ff;
+      letter-spacing: 0.12em;
+    }
+    .alert-status {
+      font-size: 3rem;
+      font-weight: 800;
+      margin: 0;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .alert-status.secure {
+      color: #36ff88;
+      text-shadow: 0 0 18px rgba(58,255,140,0.35);
+    }
+    .alert-status.danger {
+      color: #ff3a5d;
+      text-shadow: 0 0 18px rgba(255,58,101,0.35);
+      animation: pulse 1s ease-in-out infinite;
+    }
+    .alert-detail {
+      color: #dbe1ff;
+      margin-top: 16px;
+      line-height: 1.6;
+    }
+    .metrics {
+      display: grid;
+      gap: 14px;
+    }
+    .metric-card {
+      padding: 18px;
+      border-radius: 18px;
+      background: rgba(19, 24, 42, 0.86);
+      border: 1px solid rgba(72, 255, 144, 0.08);
+      display: grid;
+      gap: 8px;
+    }
+    .metric-card strong {
+      font-size: 0.88rem;
+      color: #9db7ff;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .metric-card .value {
+      font-size: 1.8rem;
+      color: #fff;
+      line-height: 1.1;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+    .footer {
+      margin-top: 12px;
+      font-size: 0.8rem;
+      color: #6e7fac;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <section class="card">
+      <div class="panel-title"><h2>Live Network Traffic</h2></div>
+      <div class="stream">
+        <ul id="trafficLog" class="log-list"></ul>
+      </div>
+      <div class="footer">Real-time SOC stream updating every second.</div>
+    </section>
+
+    <aside class="card system-card">
+      <div class="panel-title"><h2>System Status</h2></div>
+      <div class="alert-box" id="statusPanel">
+        <div class="alert-title">Threat Monitoring</div>
+        <div id="alertStatus" class="alert-status secure">SECURE</div>
+        <div id="alertDetail" class="alert-detail">All systems stable. No active threats detected.</div>
+      </div>
+
+      <div class="metrics">
+        <div class="metric-card">
+          <strong>Packets scanned</strong>
+          <div id="packetCount" class="value">0</div>
+        </div>
+        <div class="metric-card">
+          <strong>Last prediction</strong>
+          <div id="lastPrediction" class="value">N/A</div>
+        </div>
+        <div class="metric-card">
+          <strong>Confidence</strong>
+          <div id="lastConfidence" class="value">0.00</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const trafficLog = document.getElementById('trafficLog');
+    const alertStatus = document.getElementById('alertStatus');
+    const alertDetail = document.getElementById('alertDetail');
+    const packetCount = document.getElementById('packetCount');
+    const lastPrediction = document.getElementById('lastPrediction');
+    const lastConfidence = document.getElementById('lastConfidence');
+
+    let packetId = 0;
+    const maxEntries = 50;
+    let totalPackets = 0;
+
+    function createLogEntry(packet) {
+      const entry = document.createElement('li');
+      entry.className = 'log-item';
+      entry.innerHTML = `
+        <span><strong>${packet.timestamp}</strong><br><span class="text-muted">Packet ID: ${packet.id} | Bytes: ${packet.bytes}</span></span>
+        <span class="status ${packet.status === 'BENIGN' ? 'safe' : 'threat'}">${packet.status}</span>
+      `;
+      return entry;
+    }
+
+    function updateSystemState(prediction, confidence) {
+      lastPrediction.textContent = prediction;
+      lastConfidence.textContent = confidence.toFixed(4);
+      if (prediction === 'BENIGN') {
+        alertStatus.textContent = 'SECURE';
+        alertStatus.className = 'alert-status secure';
+        alertDetail.textContent = 'All systems stable. No active threats detected.';
+      } else {
+        alertStatus.textContent = 'THREAT DETECTED';
+        alertStatus.className = 'alert-status danger';
+        alertDetail.textContent = `Threat name: ${prediction}. Immediate response required.`;
+      }
+    }
+
+    async function fetchPrediction() {
+      try {
+        const simRes = await fetch('http://localhost:8000/simulate_traffic');
+        const simData = await simRes.json();
+        const predictRes = await fetch('http://localhost:8000/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ features: simData.features }),
+        });
+
+        if (!predictRes.ok) {
+          console.error('Prediction error', await predictRes.text());
+          return;
+        }
+
+        const result = await predictRes.json();
+        packetId += 1;
+        totalPackets += 1;
+        const bytes = Math.round(Math.random() * 65000 + 100);
+        const packetItem = {
+          id: packetId,
+          timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
+          bytes,
+          status: result.prediction === 'BENIGN' ? 'BENIGN' : 'ATTACK',
+        };
+
+        const logEntry = createLogEntry(packetItem);
+        trafficLog.prepend(logEntry);
+        while (trafficLog.children.length > maxEntries) {
+          trafficLog.removeChild(trafficLog.lastChild);
+        }
+
+        packetCount.textContent = totalPackets.toString();
+        updateSystemState(result.prediction, result.confidence);
+      } catch (error) {
+        console.error('Fetch error', error);
+      }
+    }
+
+    setInterval(fetchPrediction, 1000);
+    fetchPrediction();
+  </script>
+</body>
+</html>
