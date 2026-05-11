@@ -2,12 +2,35 @@ import pandas as pd
 import random
 import joblib
 import numpy as np
+import sqlite3
+from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, conlist
 
 # 1. Modelleri ve Test Verisi
 app = FastAPI()
+
+# Database setup
+DB_PATH = "detections.db"
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,
+            prediction TEXT,
+            confidence REAL
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+@app.on_event("startup")
+def startup_event():
+    init_db()
 
 # Frontend ile bağlantı için CORS ayarı
 app.add_middleware(
@@ -29,13 +52,23 @@ except Exception as e:
     print(f"❌ Hata: CSV yüklenemedi! {e}")
     test_df = None
 
-# Saldırı İsimleri Sözlüğü 
+# Label Mapping in English
 CLASS_NAMES = {
-    0: "BENIGN (GÜVENLİ)", 1: "Bot", 2: "DDoS", 3: "DoS GoldenEye", 4: "DoS Hulk", 
-    5: "DoS Slowhttptest", 6: "DoS slowloris", 7: "FTP-Patator", 
-    8: "Heartbleed", 9: "Infiltration", 10: "PortScan", 
-    11: "SSH-Patator", 12: "Web Attack - Brute Force", 
-    13: "Web Attack - Sql Injection", 14: "Web Attack - XSS"
+    0: "BENIGN", 
+    1: "Bot", 
+    2: "DDoS", 
+    3: "DoS GoldenEye", 
+    4: "DoS Hulk", 
+    5: "DoS Slowhttptest", 
+    6: "DoS Slowloris", 
+    7: "FTP Brute Force", 
+    8: "Heartbleed", 
+    9: "Infiltration", 
+    10: "Port Scan", 
+    11: "SSH Brute Force", 
+    12: "Web Attack - Brute Force", 
+    13: "Web Attack - SQL Injection", 
+    14: "Web Attack - XSS"
 }
 
 class PredictRequest(BaseModel):
@@ -69,7 +102,44 @@ async def predict(request: PredictRequest):
     probabilities = model.predict_proba(scaled_features)[0]
     real_confidence = float(probabilities[pred_index])
     
+    prediction = CLASS_NAMES.get(pred_index, "Unknown")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Save to Database
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO logs (timestamp, prediction, confidence) VALUES (?, ?, ?)",
+            (timestamp, prediction, real_confidence)
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"DB Error: {e}")
+
     return {
-        "prediction": CLASS_NAMES.get(pred_index, "Bilinmeyen"),
+        "prediction": prediction,
         "confidence": real_confidence
     }
+
+@app.get("/history")
+async def get_history():
+    """Veritabanındaki son 50 kaydı getirir."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT timestamp, prediction, confidence FROM logs ORDER BY id DESC LIMIT 50")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        history = []
+        for row in rows:
+            history.append({
+                "timestamp": row[0],
+                "prediction": row[1],
+                "confidence": row[2]
+            })
+        return history
+    except Exception as e:
+        return {"error": str(e)}

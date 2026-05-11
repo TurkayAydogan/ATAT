@@ -65,6 +65,21 @@
       font-weight: 500;
     }
 
+    .btn {
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-main);
+      font-size: 0.875rem;
+    }
+
+    .btn:hover {
+      background: #f8fafc;
+    }
+
     .card {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -98,11 +113,6 @@
       background: var(--bg-item);
       border: 1px solid var(--border);
       border-radius: 8px;
-      transition: transform 0.2s;
-    }
-
-    .traffic-item:hover {
-      border-color: var(--accent);
     }
 
     .time {
@@ -224,13 +234,66 @@
     .m-value.blue {
       color: var(--accent);
     }
+
+    /* Modal Styling */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+      background-color: var(--bg-card);
+      margin: 5% auto;
+      padding: 2rem;
+      border-radius: 12px;
+      width: 80%;
+      max-width: 900px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .history-table th, .history-table td {
+      text-align: left;
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .history-table th {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
   <div class="dashboard">
     <header>
       <div class="brand">ATAT <span>| SOC Monitor</span></div>
-      <div style="font-size: 0.8rem; font-weight: 600; color: var(--safe)">● LIVE STREAMING</div>
+      <div style="display: flex; gap: 1rem; align-items: center;">
+        <button class="btn" onclick="openHistory()">VIEW HISTORY</button>
+        <div style="font-size: 0.8rem; font-weight: 600; color: var(--safe)">● LIVE STREAMING</div>
+      </div>
     </header>
 
     <main>
@@ -270,6 +333,26 @@
     </aside>
   </div>
 
+  <!-- History Modal -->
+  <div id="historyModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="card-title" style="margin:0">Detection History (Last 50)</h2>
+        <button class="btn" onclick="closeHistory()">CLOSE</button>
+      </div>
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Prediction</th>
+            <th>Confidence</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+  </div>
+
   <script>
     const log = document.getElementById('trafficLog');
     const indicator = document.getElementById('indicator');
@@ -278,22 +361,49 @@
     const countEl = document.getElementById('count');
     const predEl = document.getElementById('lastPred');
     const confEl = document.getElementById('lastConf');
+    const historyModal = document.getElementById('historyModal');
+    const historyBody = document.getElementById('historyBody');
 
     let total = 0;
     let packetId = 0;
     const LIMIT = 6;
 
+    function openHistory() {
+      fetch('http://localhost:8000/history')
+        .then(res => res.json())
+        .then(data => {
+          historyBody.innerHTML = '';
+          data.forEach(item => {
+            const tr = document.createElement('tr');
+            const isSafe = item.prediction === 'BENIGN';
+            tr.innerHTML = `
+              <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">${item.timestamp}</td>
+              <td><span class="status-tag ${isSafe ? 'tag-safe' : 'tag-threat'}">${item.prediction}</span></td>
+              <td style="font-family: 'JetBrains Mono', monospace;">${item.confidence.toFixed(4)}</td>
+            `;
+            historyBody.appendChild(tr);
+          });
+          historyModal.style.display = 'block';
+        });
+    }
+
+    function closeHistory() {
+      historyModal.style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+      if (event.target == historyModal) closeHistory();
+    }
+
     function addLog(data, bytes) {
       packetId++;
       total++;
       
-      
-      const isSafe = data.prediction.includes('BENIGN');
+      const isSafe = data.prediction === 'BENIGN';
       const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
       
       const li = document.createElement('li');
       li.className = 'traffic-item';
-      
       li.innerHTML = `
         <div class="time">${time}</div>
         <div class="meta">
@@ -304,13 +414,8 @@
       `;
 
       log.prepend(li);
-      
-      
-      while (log.children.length > LIMIT) {
-        log.removeChild(log.lastChild);
-      }
+      while (log.children.length > LIMIT) log.removeChild(log.lastChild);
 
-      
       countEl.textContent = total.toLocaleString();
       predEl.textContent = data.prediction;
       confEl.textContent = data.confidence.toFixed(4);
